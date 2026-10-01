@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Report Builder</title>
+<style>
+:root{
+  --bg:#0e1512; --panel:#151f1a; --panel2:#1b2620; --line:#28372f;
+  --text:#dfe8e2; --muted:#7f9b8d; --accent:#e8b339; --accent2:#4fb286;
+  --danger:#e0665a; --mono:'IBM Plex Mono','SF Mono',Consolas,monospace; --sans:'Inter',-apple-system,sans-serif;
+  padding-top: env(safe-area-inset-top,0px); padding-bottom: env(safe-area-inset-bottom,0px);
+}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5}
+body{min-height:100%}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px}
+header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px}
+h1{font-family:var(--mono);font-size:18px;font-weight:600;letter-spacing:.2px}
+h1 span{color:var(--accent)}
+.sub{color:var(--muted);font-size:12.5px;margin-bottom:22px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:20px;overflow-x:auto}
+.tab{padding:9px 16px;font-size:13px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-weight:500}
+.tab.active{color:var(--text);border-color:var(--accent)}
+.tab:hover{color:var(--text)}
+.panel{display:none}
+.panel.active{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px;margin-bottom:16px}
+.card h3{font-size:12.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;margin-bottom:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px}
+.field label{font-size:11.5px;color:var(--muted)}
+input,select,textarea{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:7px 9px;border-radius:4px;font-size:13px;font-family:var(--sans)}
+input:focus,select:focus,textarea:focus{outline:1px solid var(--accent2)}
+input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent2)}
+button{background:var(--accent2);color:#0a130f;border:none;padding:8px 14px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer}
+button:hover{filter:brightness(1.1)}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+button.danger{background:var(--danger);color:#1a0a08}
+button.small{padding:4px 9px;font-size:11.5px}
+button:disabled{opacity:.5;cursor:not-allowed}
+.msg{font-family:var(--mono);font-size:12px;padding:8px 10px;border-radius:4px;margin-top:8px;white-space:pre-wrap}
+.msg.ok{background:#12261c;color:var(--accent2);border:1px solid #234436}
+.msg.err{background:#2a1512;color:var(--danger);border:1px solid #4a2420}
+.list-item{display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border:1px solid var(--line);border-radius:4px;margin-bottom:6px;background:var(--panel2);font-size:13px}
+.list-item .name{font-family:var(--mono)}
+.pill{font-size:10.5px;padding:2px 7px;border-radius:20px;background:#20302a;color:var(--muted);font-family:var(--mono)}
+.builder-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start;margin-bottom:8px;padding:10px;background:var(--panel2);border-radius:4px}
+.builder-row .grid-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line)}
+th{font-family:var(--mono);color:var(--muted);font-weight:600;font-size:11.5px}
+.scrollx{overflow-x:auto}
+.stats{display:flex;gap:18px;font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:10px}
+.stats b{color:var(--text)}
+.empty{color:var(--muted);font-size:13px;padding:20px 0;text-align:center}
+.toggle-code{font-family:var(--mono);font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline;margin-top:8px;display:inline-block}
+pre{background:var(--panel2);padding:10px;border-radius:4px;font-size:11.5px;overflow-x:auto;font-family:var(--mono);margin-top:6px}
+.dt input{width:100%;min-width:90px;background:transparent;border-color:transparent}
+.dt input:hover{border-color:var(--line)}
+.dt input.dirty{background:#3a3210;border-color:var(--accent)}
+.dt input:disabled{color:var(--muted)}
+.dt tr.new td{background:var(--panel2)}
+.dt td.act{white-space:nowrap}
+.dt td.act button{margin-right:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Report<span>Builder</span></h1>
+</header>
+<div class="sub">Dynamic Report Builder Engine — schema reflection, join builder &amp; export console</div>
+
+<div class="card" style="padding:12px 18px">
+  <div class="row" style="margin:0;align-items:flex-end">
+    <div class="field" style="max-width:420px"><label>API base URL</label><input id="apiBase" value="" /></div>
+    <button class="ghost small" onclick="pingApi()">Test connection</button>
+    <span id="apiStatus" style="font-family:var(--mono);font-size:12px;color:var(--muted)"></span>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="sources">1 · Sources</div>
+  <div class="tab" data-tab="schema">2 · Schema</div>
+  <div class="tab" data-tab="build">3 · Build Query</div>
+  <div class="tab" data-tab="results">4 · Results</div>
+  <div class="tab" data-tab="templates">5 · Templates</div>
+  <div class="tab" data-tab="data">6 · Data</div>
+</div>
+
+<!-- SOURCES -->
+<div class="panel active" id="p-sources">
+  <div class="card">
+    <h3>Connect a data source</h3>
+    <div class="row">
+      <div class="field"><label>Name</label><input id="src-name" placeholder="e.g. sales_db"></div>
+      <div class="field"><label>Dialect</label>
+        <select id="src-dialect"><option value="sqlite">SQLite</option><option value="postgresql">PostgreSQL</option><option value="mysql">MySQL</option><option value="mssql">SQL Server</option></select>
+      </div>
+    </div>
+    <div class="row" id="src-conn-fields">
+      <div class="field"><label>Host</label><input id="src-host" placeholder="localhost"></div>
+      <div class="field"><label>Port</label><input id="src-port" placeholder="5432"></div>
+      <div class="field"><label>Database / File path</label><input id="src-db" placeholder="db name or .sqlite path"></div>
+      <div class="field"><label>Username</label><input id="src-user"></div>
+      <div class="field"><label>Password</label><input id="src-pass" type="password"></div>
+      <div class="field"><label>SSL mode</label><select id="src-ssl"><option>disable</option><option>require</option></select></div>
+    </div>
+    <button onclick="createSource()">Save source</button>
+    <div id="src-msg"></div>
+  </div>
+  <div class="card">
+    <h3>Connected sources</h3>
+    <div id="src-list" class="empty">No sources yet — add one above.</div>
+  </div>
+</div>
+
+<!-- SCHEMA -->
+<div class="panel" id="p-schema">
+  <div class="card">
+    <h3>Reflect schema</h3>
+    <div class="row"><div class="field"><label>Source</label><select id="schema-source" onchange="loadTables()"></select></div></div>
+    <div id="schema-tables"></div>
+    <div id="schema-columns"></div>
+  </div>
+  <div class="card">
+    <h3>Suggested joins (FK-based)</h3>
+    <div class="row">
+      <div class="field"><label>Table A</label><select id="join-table-a"></select></div>
+      <div class="field"><label>Table B</label><select id="join-table-b"></select></div>
+    </div>
+    <button class="ghost small" onclick="loadJoinSuggestions()">Fetch join suggestions</button>
+    <div id="join-suggestions" class="empty">Select a source and two tables, then fetch suggestions.</div>
+  </div>
+</div>
+
+<!-- BUILD -->
+<div class="panel" id="p-build">
+  <div class="card">
+    <h3>1. Base table</h3>
+    <div class="row">
+      <div class="field"><label>Source</label><select id="build-source" onchange="onBuildSourceChange()"></select></div>
+      <div class="field"><label>Base table</label><select id="base-table"></select></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>2. Joins</h3>
+    <div id="joins-list"></div>
+    <button class="ghost small" onclick="addJoinRow()">+ Add join</button>
+  </div>
+  <div class="card">
+    <h3>3. Fields &amp; aliases</h3>
+    <div id="fields-list"></div>
+    <button class="ghost small" onclick="addFieldRow()">+ Add field</button>
+  </div>
+  <div class="card">
+    <h3>4. Aggregates</h3>
+    <div id="agg-list"></div>
+    <button class="ghost small" onclick="addAggRow()">+ Add aggregate</button>
+  </div>
+  <div class="card">
+    <h3>5. Filters</h3>
+    <div id="filter-list"></div>
+    <button class="ghost small" onclick="addFilterRow()">+ Add filter</button>
+  </div>
+  <div class="card">
+    <h3>6. Sort</h3>
+    <div id="sort-list"></div>
+    <button class="ghost small" onclick="addSortRow()">+ Add sort</button>
+  </div>
+  <div class="card">
+    <button onclick="runPreview()" style="font-size:14px;padding:10px 20px">Run preview →</button>
+    <span class="toggle-code" onclick="toggleJson()">view / edit raw JSON</span>
+    <pre id="json-view" style="display:none"></pre>
+    <div id="build-msg"></div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div class="panel" id="p-results">
+  <div class="card">
+    <h3>Preview</h3>
+    <div id="results-stats" class="stats"></div>
+    <div class="row" style="margin-bottom:14px">
+      <button class="ghost small" onclick="pagePrev()">← Prev page</button>
+      <span id="page-label" style="font-family:var(--mono);font-size:12px;align-self:center;color:var(--muted)">page 1</span>
+      <!-- pagination uses page/page_size per backend ReportRequest schema -->
+      <button class="ghost small" onclick="pageNext()">Next page →</button>
+      <span style="flex:1"></span>
+      <button class="small" onclick="exportReport('csv')">Export CSV</button>
+      <button class="small" onclick="exportReport('xlsx')">Export Excel</button>
+    </div>
+    <div class="scrollx"><table id="results-table"><thead></thead><tbody></tbody></table></div>
+    <div id="results-empty" class="empty">Run a preview from the Build Query tab.</div>
+  </div>
+</div>
+
+<!-- TEMPLATES -->
+<div class="panel" id="p-templates">
+  <div class="card">
+    <h3>Save current query as template</h3>
+    <div class="row">
+      <div class="field"><label>Template name</label><input id="tpl-name" placeholder="e.g. monthly_customer_totals"></div>
+      <button onclick="saveTemplate()">Save template</button>
+    </div>
+    <div id="tpl-save-msg"></div>
+  </div>
+  <div class="card">
+    <h3>Saved templates</h3>
+    <button class="ghost small" onclick="loadTemplates()">Refresh list</button>
+    <div id="tpl-list" class="empty">No templates loaded yet.</div>
+  </div>
+</div>
+
+<!-- DATA -->
+<div class="panel" id="p-data">
+  <div class="card">
+    <h3>Edit source data</h3>
+    <div class="row">
+      <div class="field"><label>Source</label><select id="data-source" onchange="dataLoadTables()"></select></div>
+      <div class="field"><label>Table</label><select id="data-table" onchange="dataPage=0;dataLoadRows()"></select></div>
+      <button class="ghost small" style="align-self:flex-end" onclick="dataLoadTables()">Reload</button>
+    </div>
+    <div id="data-msg"></div>
+    <div class="scrollx dt" id="data-grid"><div class="empty">Choose a source and table to see its rows.</div></div>
+    <div class="row" style="margin:12px 0 0;align-items:center">
+      <button class="ghost small" id="data-prev" onclick="dataPage--;dataLoadRows()">← Previous page</button>
+      <span id="data-pageinfo" style="font-family:var(--mono);font-size:12px;color:var(--muted)"></span>
+      <button class="ghost small" id="data-next" onclick="dataPage++;dataLoadRows()">Next page →</button>
+    </div>
+  </div>
+</div>
+
+</div>
+<script>
+// ---- state ----
+let sources = [];
+let schemaCache = {}; // sourceId -> {tables:[]}
+let joins = [], fields = [], aggs = [], filters = [], sorts = [];
+let currentPage = 1, pageSize = 50, lastQuery = null, lastSourceId = null;
+
+// backend Filter.op enum is one merged set across string/numeric/datetime filters
+const FILTER_OPS = ["eq","ne","contains","starts_with","ends_with","in","gt","gte","lt","lte","between","before","after","relative"];
+const JOIN_TYPES = ["INNER","LEFT","RIGHT","FULL"];
+const AGG_FUNCS = ["COUNT","SUM","AVG","MIN","MAX"];
+
+// ---- tabs ----
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('p-'+t.dataset.tab).classList.add('active');
+}));
+
+function api(){ return document.getElementById('apiBase').value.replace(/\/$/,''); }
+
+async function pingApi(){
+  const el = document.getElementById('apiStatus');
+  el.textContent = 'checking…';
+  try{
+    const r = await fetch(api()+'/sources');
+    el.textContent = r.ok ? '● reachable' : '● server responded '+r.status;
+    el.style.color = r.ok ? 'var(--accent2)' : 'var(--danger)';
+    if(r.ok) loadSources();
+  }catch(e){ el.textContent = '● unreachable — check API base URL / CORS'; el.style.color='var(--danger)'; }
+}
+
+// ---- sources ----
+async function createSource(){
+  const body = {
+    name: document.getElementById('src-name').value,
+    dialect: document.getElementById('src-dialect').value,
+    config: {
+      host: document.getElementById('src-host').value,
+      port: document.getElementById('src-port').value,
+      database: document.getElementById('src-db').value,
+      username: document.getElementById('src-user').value,
+      password: document.getElementById('src-pass').value,
+      ssl_mode: document.getElementById('src-ssl').value
+    }
+  };
+  const msg = document.getElementById('src-msg');
+  try{
+    const r = await fetch(api()+'/sources',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const data = await r.json();
+    if(!r.ok) throw new Error(data.error || data.detail || 'failed');
+    msg.innerHTML = '<div class="msg ok">Source created — id: '+ (data.id||data.source_id) +'</div>';
+    loadSources();
+  }catch(e){ msg.innerHTML = '<div class="msg err">'+e.message+'</div>'; }
+}
+
+async function loadSources(){
+  try{
+    const r = await fetch(api()+'/sources');
+    sources = await r.json();
+    if(!Array.isArray(sources)) sources = sources.sources || [];
+    const list = document.getElementById('src-list');
+    list.innerHTML = sources.length ? '' : '<div class="empty">No sources yet.</div>';
+    sources.forEach(s=>{
+      const id = s.id || s.source_id;
+      list.innerHTML += `<div class="list-item"><span class="name">${s.name||id}</span><span class="pill">${id}</span></div>`;
+    });
+    ['schema-source','build-source','data-source'].forEach(sel=>{
+      const el = document.getElementById(sel);
+      el.innerHTML = sources.map(s=>`<option value="${s.id||s.source_id}">${s.name||s.id||s.source_id}</option>`).join('');
+    });
+    if(sources.length) onBuildSourceChange();
+  }catch(e){ /* silent — user hasn't connected yet */ }
+}
+
+// ---- schema ----
+let allColumnsCache = null; // cache of /sources/{id}/columns response, keyed by table client-side
+
+async function loadTables(){
+  const sid = document.getElementById('schema-source').value;
+  if(!sid) return;
+  allColumnsCache = null;
+  const r = await fetch(api()+'/sources/'+sid+'/tables');
+  const data = await r.json();
+  const tables = data.tables || [];
+  document.getElementById('schema-tables').innerHTML = '<h3 style="margin-top:14px">Tables</h3>' +
+    tables.map(t=>`<div class="list-item"><span class="name">${t}</span><button class="ghost small" onclick="inspectTable('${sid}','${t}')">Inspect columns</button></div>`).join('');
+  ['join-table-a','join-table-b'].forEach(id=>{
+    document.getElementById(id).innerHTML = tables.map(t=>`<option>${t}</option>`).join('');
+  });
+}
+
+async function inspectTable(sid, table){
+  const box = document.getElementById('schema-columns');
+  try{
+    // backend endpoint returns columns for the whole source (no per-table path) — filter client-side
+    if(!allColumnsCache){
+      const r = await fetch(api()+'/sources/'+sid+'/columns');
+      allColumnsCache = await r.json();
+    }
+    const raw = allColumnsCache.columns || allColumnsCache;
+    const cols = (raw||[]).filter(c => !c.table || c.table===table);
+    let rows = cols.map(c=>`<tr><td>${c.name||c.column||''}</td><td>${c.type||c.db_type||''}</td><td>${c.python_type||''}</td><td>${c.primary_key?'PK':(c.foreign_key?'FK→'+c.foreign_key:'')}</td></tr>`).join('');
+    box.innerHTML = rows ? `<h3 style="margin-top:14px">${table} columns</h3><div class="scrollx"><table><thead><tr><th>Column</th><th>DB type</th><th>Python type</th><th>Key</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<div class="msg err">No columns returned for ${table} — check response shape of /sources/{id}/columns.</div>`;
+  }catch(e){ box.innerHTML = '<div class="msg err">Could not reach /sources/{id}/columns.</div>'; }
+}
+
+async function loadJoinSuggestions(){
+  const sid = document.getElementById('schema-source').value;
+  const ta = document.getElementById('join-table-a').value;
+  const tb = document.getElementById('join-table-b').value;
+  const el = document.getElementById('join-suggestions');
+  if(!sid || !ta || !tb){ el.textContent = 'Pick a source and both tables first.'; return; }
+  try{
+    const r = await fetch(api()+'/sources/'+sid+'/join-suggestions?table_a='+encodeURIComponent(ta)+'&table_b='+encodeURIComponent(tb));
+    const data = await r.json();
+    const list = data.suggestions || data;
+    el.innerHTML = (list && list.length) ? list.map(j=>`<div class="list-item"><span class="name">${j.left_table||ta} → ${j.right_table||tb}</span><span class="pill">${j.left_column||''} = ${j.right_column||''}</span></div>`).join('') : '<div class="empty">No FK-based suggestions found between these tables.</div>';
+  }catch(e){ el.innerHTML = '<div class="msg err">Endpoint not reachable.</div>'; }
+}
+
+// ---- build query: dynamic rows ----
+function onBuildSourceChange(){
+  const sid = document.getElementById('build-source').value;
+  fetch(api()+'/sources/'+sid+'/tables').then(r=>r.json()).then(data=>{
+    const tables = data.tables || [];
+    document.getElementById('base-table').innerHTML = tables.map(t=>`<option>${t}</option>`).join('');
+  });
+}
+
+function addJoinRow(){
+  joins.push({target_table:'',join_type:'INNER',left_column:'',right_column:''});
+  renderJoins();
+}
+function renderJoins(){
+  document.getElementById('joins-list').innerHTML = joins.map((j,i)=>`
+    <div class="builder-row"><div class="grid-fields">
+      <div class="field"><label>Target table</label><input value="${j.target_table}" onchange="joins[${i}].target_table=this.value"></div>
+      <div class="field"><label>Join type</label><select onchange="joins[${i}].join_type=this.value">${JOIN_TYPES.map(t=>`<option ${t===j.join_type?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="field"><label>Left column</label><input placeholder="orders.customer_id" value="${j.left_column}" onchange="joins[${i}].left_column=this.value"></div>
+      <div class="field"><label>Right column</label><input placeholder="customers.id" value="${j.right_column}" onchange="joins[${i}].right_column=this.value"></div>
+    </div><button class="ghost small danger" onclick="joins.splice(${i},1);renderJoins()">✕</button></div>`).join('') || '<div class="empty">No joins added.</div>';
+}
+
+function addFieldRow(){ fields.push({column:'',alias:''}); renderFields(); }
+function renderFields(){
+  document.getElementById('fields-list').innerHTML = fields.map((f,i)=>`
+    <div class="builder-row"><div class="grid-fields">
+      <div class="field"><label>Column</label><input placeholder="table.column" value="${f.column}" onchange="fields[${i}].column=this.value"></div>
+      <div class="field"><label>Alias (optional)</label><input value="${f.alias}" onchange="fields[${i}].alias=this.value"></div>
+    </div><button class="ghost small danger" onclick="fields.splice(${i},1);renderFields()">✕</button></div>`).join('') || '<div class="empty">No fields selected.</div>';
+}
+
+function addAggRow(){ aggs.push({column:'',func:'SUM',alias:''}); renderAggs(); }
+function renderAggs(){
+  document.getElementById('agg-list').innerHTML = aggs.map((a,i)=>`
+    <div class="builder-row"><div class="grid-fields">
+      <div class="field"><label>Column</label><input placeholder="orders.amount" value="${a.column}" onchange="aggs[${i}].column=this.value"></div>
+      <div class="field"><label>Function</label><select onchange="aggs[${i}].func=this.value">${AGG_FUNCS.map(f=>`<option ${f===a.func?'selected':''}>${f}</option>`).join('')}</select></div>
+      <div class="field"><label>Alias</label><input placeholder="total_spent" value="${a.alias}" onchange="aggs[${i}].alias=this.value"></div>
+    </div><button class="ghost small danger" onclick="aggs.splice(${i},1);renderAggs()">✕</button></div>`).join('') || '<div class="empty">No aggregates — auto GROUP BY applies only when at least one is added.</div>';
+}
+
+function addFilterRow(){ filters.push({column:'',op:'eq',value:''}); renderFilters(); }
+function renderFilters(){
+  document.getElementById('filter-list').innerHTML = filters.map((f,i)=>`
+    <div class="builder-row"><div class="grid-fields">
+      <div class="field"><label>Column</label><input placeholder="table.column" value="${f.column}" onchange="filters[${i}].column=this.value"></div>
+      <div class="field"><label>Operator</label><select onchange="filters[${i}].op=this.value">${FILTER_OPS.map(o=>`<option ${o===f.op?'selected':''}>${o}</option>`).join('')}</select></div>
+      <div class="field"><label>Value</label><input value="${f.value}" onchange="filters[${i}].value=this.value"></div>
+    </div><button class="ghost small danger" onclick="filters.splice(${i},1);renderFilters()">✕</button></div>`).join('') || '<div class="empty">No filters (WHERE clause empty).</div>';
+}
+
+function addSortRow(){ sorts.push({column:'',direction:'ASC'}); renderSorts(); }
+function renderSorts(){
+  document.getElementById('sort-list').innerHTML = sorts.map((s,i)=>`
+    <div class="builder-row"><div class="grid-fields">
+      <div class="field"><label>Column</label><input value="${s.column}" onchange="sorts[${i}].column=this.value"></div>
+      <div class="field"><label>Direction</label><select onchange="sorts[${i}].direction=this.value"><option ${s.direction==='ASC'?'selected':''}>ASC</option><option ${s.direction==='DESC'?'selected':''}>DESC</option></select></div>
+    </div><button class="ghost small danger" onclick="sorts.splice(${i},1);renderSorts()">✕</button></div>`).join('') || '<div class="empty">Default order.</div>';
+}
+
+function buildQueryObj(){
+  return {
+    source_id: document.getElementById('build-source').value,
+    base_table: document.getElementById('base-table').value,
+    joins: joins.filter(j=>j.target_table).map(j=>({target_table:j.target_table, join_type:j.join_type, conditions:[{left_column:j.left_column, right_column:j.right_column}]})),
+    fields: fields.filter(f=>f.column).map(f=>f.alias?{column:f.column, alias:f.alias}:{column:f.column}),
+    // backend requires a non-empty alias on every aggregate — auto-fill from column+func if left blank
+    aggregates: aggs.filter(a=>a.column).map(a=>({column:a.column, func:a.func, alias:a.alias || (a.func+'_'+a.column.replace('.','_'))})),
+    filters: filters.filter(f=>f.column).map(f=>({column:f.column, op:f.op, value:f.value})),
+    sort: sorts.filter(s=>s.column).map(s=>({column:s.column, direction:s.direction})),
+    page: currentPage, page_size: pageSize
+  };
+}
+function toggleJson(){
+  const el = document.getElementById('json-view');
+  el.style.display = el.style.display==='none' ? 'block' : 'none';
+  if(el.style.display==='block') el.textContent = JSON.stringify(buildQueryObj(), null, 2);
+}
+
+async function runPreview(page){
+  currentPage = page||1;
+  const q = buildQueryObj();
+  if(!q.base_table){ document.getElementById('build-msg').innerHTML = '<div class="msg err">Pick a base table first (for example orders). If the list is empty, re-select the source above.</div>'; return; }
+  lastQuery = q; lastSourceId = q.source_id;
+  const msg = document.getElementById('build-msg');
+  msg.innerHTML = '<div class="msg">Running…</div>';
+  try{
+    const r = await fetch(api()+'/reports/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(q)});
+    const data = await r.json();
+    if(!r.ok) throw new Error(data.error || data.detail || 'Preview failed');
+    msg.innerHTML = '<div class="msg ok">Preview OK — '+ (data.rows||[]).length +' rows returned</div>';
+    renderResults(data);
+    document.querySelector('.tab[data-tab=results]').click();
+  }catch(e){ msg.innerHTML = '<div class="msg err">'+e.message+'</div>'; }
+}
+
+function renderResults(data){
+  document.getElementById('results-empty').style.display='none';
+  document.getElementById('results-stats').innerHTML =
+    `<span>rows: <b>${(data.rows||[]).length}</b></span><span>est. total: <b>${data.total_record_estimate??'—'}</b></span><span>latency: <b>${data.latency_ms??'—'} ms</b></span>`;
+  const thead = document.querySelector('#results-table thead');
+  const tbody = document.querySelector('#results-table tbody');
+  thead.innerHTML = '<tr>'+ (data.columns||[]).map(c=>`<th>${c}</th>`).join('') +'</tr>';
+  tbody.innerHTML = (data.rows||[]).map(row=>'<tr>'+row.map(v=>`<td>${v===null?'∅':v}</td>`).join('')+'</tr>').join('');
+  document.getElementById('page-label').textContent = 'page '+currentPage;
+}
+function pageNext(){ if(!lastQuery) return; runPreview(currentPage+1); }
+function pagePrev(){ if(!lastQuery) return; runPreview(Math.max(1,currentPage-1)); }
+
+async function exportReport(fmt){
+  if(!lastQuery){ alert('Run a preview first.'); return; }
+  try{
+    const r = await fetch(api()+'/reports/export/'+fmt,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(lastQuery)});
+    if(!r.ok) throw new Error('Export failed ('+r.status+')');
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'report.'+(fmt==='xlsx'?'xlsx':'csv'); a.click();
+    URL.revokeObjectURL(url);
+  }catch(e){ alert(e.message+' — check /reports/export/'+fmt+' exists on backend.'); }
+}
+
+// ---- templates ----
+async function saveTemplate(){
+  const name = document.getElementById('tpl-name').value;
+  const msg = document.getElementById('tpl-save-msg');
+  if(!name){ msg.innerHTML='<div class="msg err">Name required.</div>'; return; }
+  try{
+    const body = { name, request: buildQueryObj() };
+    const r = await fetch(api()+'/templates',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const data = await r.json();
+    if(!r.ok) throw new Error(data.error||data.detail||'failed');
+    msg.innerHTML = '<div class="msg ok">Template saved.</div>';
+    loadTemplates();
+  }catch(e){ msg.innerHTML = '<div class="msg err">'+e.message+'</div>'; }
+}
+async function loadTemplates(){
+  const el = document.getElementById('tpl-list');
+  try{
+    const r = await fetch(api()+'/templates');
+    const data = await r.json();
+    const list = data.templates || data;
+    el.innerHTML = (list&&list.length) ? list.map(t=>`<div class="list-item"><span class="name">${t.name}</span><span class="pill">${t.id||''}</span><button class="ghost small" onclick='loadTemplateInto(${JSON.stringify(t).replace(/'/g,"&apos;")})'>Load into builder</button></div>`).join('') : '<div class="empty">No templates saved yet.</div>';
+  }catch(e){ el.innerHTML = '<div class="msg err">Could not reach /templates.</div>'; }
+}
+function loadTemplateInto(t){
+  const req = t.request || t; // template stores the ReportRequest nested under 'request'
+  joins = (req.joins||[]).map(j=>({target_table:j.target_table, join_type:j.join_type, left_column:j.conditions?.[0]?.left_column||'', right_column:j.conditions?.[0]?.right_column||''}));
+  fields = req.fields||[]; aggs = req.aggregates||[]; filters = req.filters||[]; sorts = req.sort||[];
+  renderJoins(); renderFields(); renderAggs(); renderFilters(); renderSorts();
+  document.querySelector('.tab[data-tab=build]').click();
+}
+
+// ---- data tab (edit rows via /data endpoints) ----
+let dataPage = 0, dataInfo = null;
+const DATA_LIMIT = 50;
+function dataMsg(t, kind){
+  const m = document.getElementById('data-msg'); m.innerHTML = '';
+  if(!t) return;
+  const d = document.createElement('div'); d.className = 'msg' + (kind ? ' '+kind : ''); d.textContent = t; m.appendChild(d);
+}
+async function dataApi(path, opt={}){
+  const r = await fetch(api()+path, {headers:{'Content-Type':'application/json'}, ...opt});
+  const txt = await r.text(); let d; try{ d = JSON.parse(txt); }catch{ d = txt; }
+  if(!r.ok){
+    let detail = d && (d.detail || d.error || d.message);
+    if(Array.isArray(detail)) detail = detail.map(x=>(x.loc||[]).slice(-1)+': '+x.msg).join('; ');
+    throw new Error(detail || ('HTTP '+r.status));
+  }
+  return d;
+}
+function dataBase(){
+  return '/data/'+document.getElementById('data-source').value+'/tables/'+encodeURIComponent(document.getElementById('data-table').value)+'/rows';
+}
+async function dataLoadTables(){
+  const sid = document.getElementById('data-source').value;
+  const sel = document.getElementById('data-table'); sel.innerHTML = '';
+  if(!sid){ dataMsg('No source yet. Add one in the Sources tab first.', 'err'); return; }
+  try{
+    const d = await dataApi('/data/'+sid+'/tables');
+    d.tables.forEach(t=>{ const o = document.createElement('option'); o.value = t.name; o.textContent = t.name + (t.editable ? '' : ' (read-only)'); sel.appendChild(o); });
+    dataPage = 0; await dataLoadRows();
+  }catch(e){ dataMsg(e.message, 'err'); }
+}
+async function dataLoadRows(){
+  if(!document.getElementById('data-table').value) return;
+  try{ dataInfo = await dataApi(dataBase()+'?limit='+DATA_LIMIT+'&offset='+(dataPage*DATA_LIMIT)); dataRender(); }
+  catch(e){ dataMsg(e.message, 'err'); }
+}
+function dataCell(col, val, disabled){
+  const td = document.createElement('td'), i = document.createElement('input');
+  i.value = val == null ? '' : (typeof val === 'object' ? JSON.stringify(val) : val);
+  i.dataset.orig = i.value; i.dataset.col = col.name; i.disabled = !!disabled;
+  if(val == null) i.placeholder = 'NULL';
+  td.appendChild(i); return td;
+}
+function dataRender(){
+  const g = document.getElementById('data-grid'); g.innerHTML = '';
+  const t = document.createElement('table'), head = document.createElement('tr');
+  dataInfo.columns.forEach(c=>{
+    const th = document.createElement('th'); th.textContent = c.name + (c.pk ? ' (key)' : '') + ' · ' + c.type; head.appendChild(th);
+  });
+  if(dataInfo.editable) head.appendChild(document.createElement('th'));
+  const thead = document.createElement('thead'); thead.appendChild(head); t.appendChild(thead);
+  const body = document.createElement('tbody');
+  if(dataInfo.editable){
+    const tr = document.createElement('tr'); tr.className = 'new';
+    dataInfo.columns.forEach(c=>{ const td = dataCell(c, null, false); td.firstChild.placeholder = c.pk ? 'auto' : 'new value'; tr.appendChild(td); });
+    const act = document.createElement('td'); act.className = 'act';
+    const add = document.createElement('button'); add.className = 'small'; add.textContent = 'Add row';
+    add.onclick = ()=>dataAddRow(tr); act.appendChild(add); tr.appendChild(act); body.appendChild(tr);
+  }
+  dataInfo.rows.forEach(row=>{
+    const tr = document.createElement('tr');
+    dataInfo.columns.forEach(c=>tr.appendChild(dataCell(c, row[c.name], !dataInfo.editable || c.pk)));
+    if(dataInfo.editable){
+      const act = document.createElement('td'); act.className = 'act';
+      const save = document.createElement('button'); save.className = 'small'; save.textContent = 'Save changes'; save.disabled = true;
+      const del = document.createElement('button'); del.className = 'small danger'; del.textContent = 'Delete row';
+      tr.addEventListener('input', e=>{
+        e.target.classList.toggle('dirty', e.target.value !== e.target.dataset.orig);
+        save.disabled = !tr.querySelector('input.dirty');
+      });
+      save.onclick = ()=>dataSaveRow(tr, row[dataInfo.pk], save);
+      del.onclick = ()=>dataDeleteRow(row[dataInfo.pk]);
+      act.append(save, del); tr.appendChild(act);
+    }
+    body.appendChild(tr);
+  });
+  t.appendChild(body); g.appendChild(t);
+  if(!dataInfo.rows.length){ const e = document.createElement('div'); e.className = 'empty'; e.textContent = 'This table has no rows yet.'; g.appendChild(e); }
+  const pages = Math.max(1, Math.ceil(dataInfo.total / DATA_LIMIT));
+  document.getElementById('data-pageinfo').textContent = 'page '+(dataPage+1)+' of '+pages+' · '+dataInfo.total+' rows';
+  document.getElementById('data-prev').disabled = dataPage === 0;
+  document.getElementById('data-next').disabled = dataPage+1 >= pages;
+  if(!dataInfo.editable) dataMsg(dataInfo.pk ? 'Editing is turned off on the backend.' : 'This table has no single-column key, so it is view-only.', '');
+  else dataMsg('');
+}
+async function dataSaveRow(tr, pk, btn){
+  const values = {}; tr.querySelectorAll('input.dirty').forEach(i=>values[i.dataset.col] = i.value);
+  btn.disabled = true;
+  try{ await dataApi(dataBase()+'/'+encodeURIComponent(pk), {method:'PUT', body:JSON.stringify({values})}); await dataLoadRows(); dataMsg('Changes saved.', 'ok'); }
+  catch(e){ dataMsg(e.message, 'err'); btn.disabled = false; }
+}
+async function dataAddRow(tr){
+  const values = {}; tr.querySelectorAll('input').forEach(i=>{ if(i.value !== '') values[i.dataset.col] = i.value; });
+  if(!Object.keys(values).length){ dataMsg('Fill in at least one value to add a row.', 'err'); return; }
+  try{ await dataApi(dataBase(), {method:'POST', body:JSON.stringify({values})}); await dataLoadRows(); dataMsg('Row added.', 'ok'); }
+  catch(e){ dataMsg(e.message, 'err'); }
+}
+async function dataDeleteRow(pk){
+  if(!confirm('Delete the row with '+dataInfo.pk+' = '+pk+'? This cannot be undone.')) return;
+  try{ await dataApi(dataBase()+'/'+encodeURIComponent(pk), {method:'DELETE'}); await dataLoadRows(); dataMsg('Row deleted.', 'ok'); }
+  catch(e){ dataMsg(e.message, 'err'); }
+}
+document.querySelector('.tab[data-tab=data]').addEventListener('click', dataLoadTables);
+
+// init
+addJoinRow(); joins=[]; renderJoins();
+addFieldRow(); fields=[]; renderFields();
+renderAggs(); renderFilters(); renderSorts();
+loadSources();
+</script>
+<script>
+  // Live par apna origin, local file:// par localhost API
+  document.getElementById('apiBase').value =
+    location.protocol === 'file:' ? 'http://127.0.0.1:8000' : location.origin;
+</script>
+</body>
+</html>
