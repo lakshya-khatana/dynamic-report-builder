@@ -1,3 +1,5 @@
+﻿**Live demo:** https://dynamic-report-builder.onrender.com
+
 # Dynamic Report Builder Engine
 
 A schema-agnostic report builder. Connect a database, reflect its schema, build a query (joins, fields, aggregates, filters, sort) and run it with pagination, or export the result. The backend is FastAPI + SQLAlchemy Core, and the UI is a single HTML file.
@@ -43,11 +45,11 @@ uvicorn main:app --reload --port 8000
 
 1. Open `ui/report-builder.html` by double-clicking it (it opens in your normal browser). Keep the backend running.
 2. The API base URL at the top should be `http://127.0.0.1:8000`. Click **Test connection**; it should say reachable.
-3. **1 · Sources**: add a source. For the bundled sample data choose dialect SQLite and use the full path to `storage/sample.db` with forward slashes, for example `C:/path/to/project/storage/sample.db`.
-4. **2 · Schema**: browse tables and columns.
-5. **3 · Build Query**: pick the source, a base table, add joins, fields and aggregates, then **Run preview**.
-6. **4 · Results**: page through the rows and export to CSV or Excel.
-7. **5 · Templates**: save and reload report definitions.
+3. **1 Â· Sources**: add a source. For the bundled sample data choose dialect SQLite and use the full path to `storage/sample.db` with forward slashes, for example `C:/path/to/project/storage/sample.db`.
+4. **2 Â· Schema**: browse tables and columns.
+5. **3 Â· Build Query**: pick the source, a base table, add joins, fields and aggregates, then **Run preview**.
+6. **4 Â· Results**: page through the rows and export to CSV or Excel.
+7. **5 Â· Templates**: save and reload report definitions.
 
 ## Tests
 
@@ -57,7 +59,7 @@ python -m pytest -v
 
 ## Optional: Data tab (demo helper, not part of the report engine)
 
-Tab **6 · Data** lets you view and edit rows of a source's tables (backend file `data_admin.py`). It is a convenience for demos and is separate from the report engine, whose read-only guard is unchanged.
+Tab **6 Â· Data** lets you view and edit rows of a source's tables (backend file `data_admin.py`). It is a convenience for demos and is separate from the report engine, whose read-only guard is unchanged.
 
 Editing is controlled by the `ALLOW_DATA_EDIT` environment variable. Set it in the same terminal before starting the server:
 
@@ -85,3 +87,4 @@ tests/             unit tests
 ui/                report-builder.html
 data_admin.py      optional Data tab backend
 ```
+
